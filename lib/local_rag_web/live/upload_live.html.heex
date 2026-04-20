@@ -1,0 +1,144 @@
+<div class="max-w-4xl mx-auto p-6 space-y-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold">Knowledge Base</h1>
+      <p class="text-base-content/60 mt-1">
+        Drag & drop files to add them to your business knowledge base.
+        Supported: PDF, TXT, MD, CSV, JSON
+      </p>
+    </div>
+    <.link navigate={~p"/chat"} class="btn btn-primary">
+      Chat
+    </.link>
+  </div>
+
+  <%!-- Flash --%>
+  <%= if msg = Phoenix.Flash.get(@flash, :info) do %>
+    <div class="alert alert-success">
+      <span>{msg}</span>
+    </div>
+  <% end %>
+  <%= if msg = Phoenix.Flash.get(@flash, :error) do %>
+    <div class="alert alert-error">
+      <span>{msg}</span>
+    </div>
+  <% end %>
+
+  <%!-- Upload form --%>
+  <form id="upload-form" phx-submit="upload" phx-change="validate">
+    <div
+      class="border-2 border-dashed border-base-300 rounded-2xl p-10 text-center cursor-pointer hover:border-primary transition-colors"
+      phx-drop-target={@uploads.files.ref}
+    >
+      <div class="flex flex-col items-center gap-3 text-base-content/60">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-12 w-12"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+        <p class="text-lg font-medium">Drop files here or click to browse</p>
+        <p class="text-sm">Up to 50 MB per file · PDF, TXT, MD, CSV, JSON</p>
+        <.live_file_input upload={@uploads.files} class="hidden" />
+        <label for={@uploads.files.ref} class="btn btn-sm btn-outline mt-2 cursor-pointer">
+          Select files
+        </label>
+      </div>
+    </div>
+
+    <%!-- Staged file list --%>
+    <%= if @uploads.files.entries != [] do %>
+      <div class="mt-4 space-y-2">
+        <%= for entry <- @uploads.files.entries do %>
+          <div class="flex items-center gap-3 bg-base-200 rounded-lg px-4 py-2">
+            <span class="flex-1 text-sm font-medium truncate">{entry.client_name}</span>
+            <span class="text-xs text-base-content/60">{humanize_bytes(entry.client_size)}</span>
+            <progress class="progress progress-primary w-24" value={entry.progress} max="100">
+            </progress>
+            <button
+              type="button"
+              phx-click="cancel-upload"
+              phx-value-ref={entry.ref}
+              class="btn btn-xs btn-ghost"
+            >
+              ✕
+            </button>
+          </div>
+          <%= for err <- upload_errors(@uploads.files, entry) do %>
+            <p class="text-error text-xs ml-4">{Phoenix.Naming.humanize(err)}</p>
+          <% end %>
+        <% end %>
+      </div>
+
+      <div class="mt-4 flex justify-end">
+        <button
+          type="submit"
+          class={"btn btn-primary #{if @uploading, do: "loading"}"}
+          disabled={@uploading}
+        >
+          {if @uploading, do: "Processing…", else: "Upload & Vectorize"}
+        </button>
+      </div>
+    <% end %>
+  </form>
+
+  <%!-- Documents table --%>
+  <%= if @documents != [] do %>
+    <div class="overflow-x-auto">
+      <table class="table table-zebra w-full">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>File</th>
+            <th>Size</th>
+            <th>Chunks</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <%= for doc <- @documents do %>
+            <% {label, badge_class} = status_badge(doc.status) %>
+            <tr>
+              <td class="font-medium">{doc.name}</td>
+              <td class="text-base-content/60 text-sm">{doc.original_filename}</td>
+              <td class="text-sm">{humanize_bytes(doc.file_size)}</td>
+              <td class="text-sm">{doc.chunk_count}</td>
+              <td>
+                <span class={"badge #{badge_class}"}>{label}</span>
+                <%= if doc.error_message do %>
+                  <p class="text-error text-xs mt-1">{doc.error_message}</p>
+                <% end %>
+              </td>
+              <td>
+                <button
+                  phx-click="delete"
+                  phx-value-id={doc.id}
+                  data-confirm={
+                    # {doc.name}"? This cannot be undone."
+                    "Delete "
+                  }
+                  class="btn btn-xs btn-ghost text-error"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="text-center py-12 text-base-content/50">
+      <p>No documents yet. Upload your first file above.</p>
+    </div>
+  <% end %>
+</div>

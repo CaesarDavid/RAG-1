@@ -1,0 +1,94 @@
+<div class="max-w-3xl mx-auto p-6 flex flex-col h-screen">
+  <%!-- Header --%>
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h1 class="text-2xl font-bold">Ask your Knowledge Base</h1>
+      <p class="text-base-content/60 text-sm">Powered by bge-m3 + LM Studio</p>
+    </div>
+    <.link navigate={~p"/"} class="btn btn-sm btn-outline">
+      ← Upload Docs
+    </.link>
+  </div>
+
+  <%!-- Messages --%>
+  <div class="flex-1 overflow-y-auto space-y-4 mb-4 pr-1" id="messages" phx-hook="ScrollBottom">
+    <%= if @messages == [] do %>
+      <div class="text-center text-base-content/40 mt-20">
+        <p class="text-lg">Ask anything about your uploaded documents.</p>
+      </div>
+    <% end %>
+
+    <%= for {msg, i} <- Enum.with_index(@messages) do %>
+      <div
+        id={"msg-#{i}"}
+        class={"flex #{if msg.role == :user, do: "justify-end", else: "justify-start"}"}
+      >
+        <div class={[
+          "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+          if(msg.role == :user,
+            do: "bg-primary text-primary-content rounded-br-sm",
+            else: "bg-base-200 rounded-bl-sm"
+          )
+        ]}>
+          <p class="whitespace-pre-wrap">{msg.content}</p>
+
+          <%!-- Sources --%>
+          <%= if msg.role == :assistant and msg.sources != [] do %>
+            <details class="mt-3 text-xs opacity-70">
+              <summary class="cursor-pointer font-semibold">
+                Sources ({length(msg.sources)})
+              </summary>
+              <ul class="mt-2 space-y-1">
+                <%= for src <- msg.sources do %>
+                  <li class="border-l-2 border-primary/40 pl-2">
+                    <span class="font-medium">{src.document_name}</span>
+                    · chunk #{src.chunk_index}
+                    <p class="text-base-content/60 line-clamp-2 mt-0.5">{src.content}</p>
+                  </li>
+                <% end %>
+              </ul>
+            </details>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if @thinking do %>
+      <div class="flex justify-start">
+        <div class="bg-base-200 rounded-2xl rounded-bl-sm px-4 py-3">
+          <span class="loading loading-dots loading-sm"></span>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <%!-- Input --%>
+  <form phx-submit="ask" phx-change="update-question" class="flex gap-2">
+    <input
+      type="text"
+      name="question"
+      value={@question}
+      placeholder="Ask a question…"
+      class="input input-bordered flex-1"
+      autocomplete="off"
+      disabled={@thinking}
+      phx-debounce="100"
+    />
+    <button
+      type="submit"
+      class={"btn btn-primary #{if @thinking, do: "loading"}"}
+      disabled={@thinking}
+    >
+      {if @thinking, do: "", else: "Send"}
+    </button>
+  </form>
+</div>
+
+<script>
+  // Auto-scroll to bottom when new messages arrive
+  window.ScrollBottom = {
+    mounted() { this.scrollToBottom() },
+    updated() { this.scrollToBottom() },
+    scrollToBottom() { this.el.scrollTop = this.el.scrollHeight }
+  }
+</script>
