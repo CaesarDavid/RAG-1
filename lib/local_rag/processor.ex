@@ -56,8 +56,13 @@ defmodule LocalRag.Processor do
             Logger.error("Processing failed for document #{id}: #{reason}")
 
             case Documents.set_status(doc, "error", error: inspect(reason)) do
-              {:ok, updated} -> broadcast(updated)
-              {:error, err} -> Logger.error("Also failed to set error status for document #{id}: #{inspect(err)}")
+              {:ok, updated} ->
+                broadcast(updated)
+
+              {:error, err} ->
+                Logger.error(
+                  "Also failed to set error status for document #{id}: #{inspect(err)}"
+                )
             end
 
             {:error, reason}

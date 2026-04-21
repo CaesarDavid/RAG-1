@@ -8,30 +8,30 @@ defmodule LocalRag.Chunks do
   Embeddings are passed as JSON arrays; Turso's `vector32()` function converts them.
   Returns `{:ok, count}` or `{:error, reason}`.
   """
-@batch_size 5
+  @batch_size 5
 
-    def insert_chunks(document_id, chunks_with_embeddings) do
-      now = DateTime.utc_now() |> DateTime.to_iso8601()
+  def insert_chunks(document_id, chunks_with_embeddings) do
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
 
-      stmts =
-        chunks_with_embeddings
-        |> Enum.with_index()
-        |> Enum.map(fn {{content, embedding}, idx} ->
-          embedding_json = "[" <> Enum.join(embedding, ",") <> "]"
+    stmts =
+      chunks_with_embeddings
+      |> Enum.with_index()
+      |> Enum.map(fn {{content, embedding}, idx} ->
+        embedding_json = "[" <> Enum.join(embedding, ",") <> "]"
 
-          {"""
-           INSERT INTO chunks (document_id, content, chunk_index, embedding, inserted_at, updated_at)
-           VALUES (?, ?, ?, vector32(?), ?, ?)
-           """, [document_id, content, idx, embedding_json, now, now]}
-        end)
+        {"""
+         INSERT INTO chunks (document_id, content, chunk_index, embedding, inserted_at, updated_at)
+         VALUES (?, ?, ?, vector32(?), ?, ?)
+         """, [document_id, content, idx, embedding_json, now, now]}
+      end)
 
-      total_batches = ceil(length(stmts) / @batch_size)
+    total_batches = ceil(length(stmts) / @batch_size)
 
-      stmts
-      |> Enum.chunk_every(@batch_size)
-      |> Enum.with_index(1)
-      |> Enum.reduce_while({:ok, 0}, fn {batch, idx}, {:ok, count} ->
-        Logger.info("Storing chunk batch #{idx}/#{total_batches}")
+    stmts
+    |> Enum.chunk_every(@batch_size)
+    |> Enum.with_index(1)
+    |> Enum.reduce_while({:ok, 0}, fn {batch, idx}, {:ok, count} ->
+      Logger.info("Storing chunk batch #{idx}/#{total_batches}")
 
       case Turso.pipeline(batch) do
         {:ok, results} -> {:cont, {:ok, count + length(results)}}
