@@ -42,8 +42,7 @@ defmodule LocalRag.MixProject do
     [
       {:phoenix, "~> 1.8.5"},
       {:phoenix_ecto, "~> 4.5"},
-      {:ecto_sql, "~> 3.13"},
-      {:postgrex, ">= 0.0.0"},
+      {:ecto, "~> 3.13"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.1.0"},
@@ -64,8 +63,8 @@ defmodule LocalRag.MixProject do
       {:bandit, "~> 1.5"},
       # RAG dependencies
       {:req, "~> 0.5"},
-      {:pgvector, "~> 0.3"},
-      {:nimble_csv, "~> 1.2"}
+      {:nimble_csv, "~> 1.2"},
+      {:dotenvy, "~> 0.8"}
     ]
   end
 
@@ -77,10 +76,8 @@ defmodule LocalRag.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      setup: ["deps.get", "local_rag.migrate", "assets.setup", "assets.build"],
+      test: ["test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["compile", "tailwind local_rag", "esbuild local_rag"],
       "assets.deploy": [

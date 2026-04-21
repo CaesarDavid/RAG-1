@@ -73,8 +73,7 @@ defmodule LocalRag.Processor do
     # Clear any previous chunks (re-processing scenario)
     Chunks.delete_for_document(document_id)
     pairs = Enum.zip(chunks, embeddings)
-    {count, _} = Chunks.insert_chunks(document_id, pairs)
-    {:ok, count}
+    Chunks.insert_chunks(document_id, pairs)
   end
 
   # Files are stored temporarily under priv/uploads/<document_id>.<ext>

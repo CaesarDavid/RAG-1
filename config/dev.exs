@@ -1,14 +1,19 @@
 import Config
 
-# Configure your database
-config :local_rag, LocalRag.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "local_rag_dev",
-  stacktrace: true,
-  show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+# Auto-load .env file in development so TURSO_TOKEN and DATBASE_URL are available.
+# Alternatively, run: source .env && mix phx.server
+if File.exists?(".env") do
+  ".env"
+  |> File.read!()
+  |> String.split("\n", trim: true)
+  |> Enum.reject(&String.starts_with?(&1, "#"))
+  |> Enum.each(fn line ->
+    case String.split(line, "=", parts: 2) do
+      [k, v] -> System.put_env(String.trim(k), String.trim(v, ~s(")))
+      _ -> :ok
+    end
+  end)
+end
 
 # For development, we disable any cache and enable
 # debugging and code reloading.

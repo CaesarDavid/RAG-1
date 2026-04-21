@@ -7,9 +7,10 @@
 # General application configuration
 import Config
 
-config :local_rag,
-  ecto_repos: [LocalRag.Repo],
-  generators: [timestamp_type: :utc_datetime]
+# Turso database config (overridden at runtime via env vars in runtime.exs)
+config :local_rag, :turso,
+  url: System.get_env("DATBASE_URL") || "",
+  token: System.get_env("TURSO_TOKEN") || ""
 
 # RAG configuration – override in runtime.exs for production
 # Using LM Studio (OpenAI-compatible API) at http://127.0.0.1:1234

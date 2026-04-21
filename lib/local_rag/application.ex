@@ -9,7 +9,6 @@ defmodule LocalRag.Application do
   def start(_type, _args) do
     children = [
       LocalRagWeb.Telemetry,
-      LocalRag.Repo,
       {DNSCluster, query: Application.get_env(:local_rag, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: LocalRag.PubSub},
       {Task.Supervisor, name: LocalRag.TaskSupervisor},
