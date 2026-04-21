@@ -37,6 +37,14 @@ defmodule LocalRag.Chunker do
         [para]
       end
     end)
+    # Further split anything that is still way too long
+    |> Enum.flat_map(fn chunk ->
+      if String.length(chunk) > 2000 do
+        chunk |> String.to_charlist() |> Enum.chunk_every(1500) |> Enum.map(&to_string/1)
+      else
+        [chunk]
+      end
+    end)
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 == ""))
   end

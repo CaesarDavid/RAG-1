@@ -8,26 +8,31 @@ defmodule LocalRag.Chunks do
   Embeddings are passed as JSON arrays; Turso's `vector32()` function converts them.
   Returns `{:ok, count}` or `{:error, reason}`.
   """
-  @batch_size 50
+@batch_size 5
 
-  def insert_chunks(document_id, chunks_with_embeddings) do
-    now = DateTime.utc_now() |> DateTime.to_iso8601()
+    def insert_chunks(document_id, chunks_with_embeddings) do
+      now = DateTime.utc_now() |> DateTime.to_iso8601()
 
-    stmts =
-      chunks_with_embeddings
-      |> Enum.with_index()
-      |> Enum.map(fn {{content, embedding}, idx} ->
-        embedding_json = Jason.encode!(embedding)
+      stmts =
+        chunks_with_embeddings
+        |> Enum.with_index()
+        |> Enum.map(fn {{content, embedding}, idx} ->
+          embedding_json = "[" <> Enum.join(embedding, ",") <> "]"
 
-        {"""
-         INSERT INTO chunks (document_id, content, chunk_index, embedding, inserted_at, updated_at)
-         VALUES (?, ?, ?, vector32(?), ?, ?)
-         """, [document_id, content, idx, embedding_json, now, now]}
-      end)
+          {"""
+           INSERT INTO chunks (document_id, content, chunk_index, embedding, inserted_at, updated_at)
+           VALUES (?, ?, ?, vector32(?), ?, ?)
+           """, [document_id, content, idx, embedding_json, now, now]}
+        end)
 
-    stmts
-    |> Enum.chunk_every(@batch_size)
-    |> Enum.reduce_while({:ok, 0}, fn batch, {:ok, count} ->
+      total_batches = ceil(length(stmts) / @batch_size)
+
+      stmts
+      |> Enum.chunk_every(@batch_size)
+      |> Enum.with_index(1)
+      |> Enum.reduce_while({:ok, 0}, fn {batch, idx}, {:ok, count} ->
+        Logger.info("Storing chunk batch #{idx}/#{total_batches}")
+
       case Turso.pipeline(batch) do
         {:ok, results} -> {:cont, {:ok, count + length(results)}}
         {:error, _} = err -> {:halt, err}
@@ -45,7 +50,8 @@ defmodule LocalRag.Chunks do
   Uses Turso's vector_top_k() ANN function for index-backed search.
   """
   def similarity_search(query_embedding, top_k \\ 5) do
-    embedding_json = Jason.encode!(query_embedding)
+    # The ANN index needs an array formatted explicitly as a string
+    embedding_json = "[" <> Enum.join(query_embedding, ", ") <> "]"
 
     # Request extra candidates from the ANN index to allow for status filtering.
     ann_k = top_k * 3

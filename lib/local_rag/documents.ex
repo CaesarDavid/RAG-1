@@ -58,12 +58,18 @@ defmodule LocalRag.Documents do
         |> Enum.map(fn {k, v} -> {"#{k} = ?", v} end)
         |> Enum.unzip()
 
-      set_clauses = Enum.join(set_clauses, ", ")
-      sql = "UPDATE documents SET #{set_clauses}, updated_at = ? WHERE id = ?"
+      if set_clauses == [] do
+        {:ok, get_document!(id)}
+      else
+        set_clauses = Enum.join(set_clauses, ", ")
+        sql = "UPDATE documents SET #{set_clauses}, updated_at = ? WHERE id = ?"
+        require Logger
+        Logger.info("Executing: #{sql}")
 
-      case Turso.execute(sql, values ++ [now, id]) do
-        {:ok, _} -> {:ok, get_document!(id)}
-        {:error, reason} -> {:error, reason}
+        case Turso.execute(sql, values ++ [now, id]) do
+          {:ok, _} -> {:ok, get_document!(id)}
+          {:error, reason} -> {:error, reason}
+        end
       end
     else
       {:error, changeset}

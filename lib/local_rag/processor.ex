@@ -27,19 +27,44 @@ defmodule LocalRag.Processor do
   Synchronous processing pipeline – useful for tests or scripts.
   """
   def process(%{id: id} = document) do
-    {:ok, doc} = Documents.set_status(document, "processing")
-    broadcast(doc)
+    case Documents.set_status(document, "processing") do
+      {:ok, doc} ->
+        broadcast(doc)
 
-    case do_process(doc) do
-      {:ok, chunk_count} ->
-        {:ok, updated} = Documents.set_status(doc, "ready", chunk_count: chunk_count)
-        broadcast(updated)
-        {:ok, updated}
+        result =
+          try do
+            do_process(doc)
+          rescue
+            e -> {:error, Exception.message(e)}
+          end
+
+        Logger.info("do_process returned: #{inspect(result)}")
+
+        case result do
+          {:ok, chunk_count} ->
+            case Documents.set_status(doc, "ready", chunk_count: chunk_count) do
+              {:ok, updated} ->
+                broadcast(updated)
+                {:ok, updated}
+
+              {:error, reason} ->
+                Logger.error("Failed to mark document #{id} as ready: #{inspect(reason)}")
+                {:error, reason}
+            end
+
+          {:error, reason} ->
+            Logger.error("Processing failed for document #{id}: #{reason}")
+
+            case Documents.set_status(doc, "error", error: inspect(reason)) do
+              {:ok, updated} -> broadcast(updated)
+              {:error, err} -> Logger.error("Also failed to set error status for document #{id}: #{inspect(err)}")
+            end
+
+            {:error, reason}
+        end
 
       {:error, reason} ->
-        Logger.error("Processing failed for document #{id}: #{reason}")
-        {:ok, updated} = Documents.set_status(doc, "error", error: reason)
-        broadcast(updated)
+        Logger.error("Failed to set document status to processing: #{inspect(reason)}")
         {:error, reason}
     end
   end
@@ -50,11 +75,16 @@ defmodule LocalRag.Processor do
 
   defp do_process(document) do
     path = tmp_path(document)
+    Logger.info("Starting processing for document #{document.id} at path #{path}")
 
     with {:ok, text} <- Extractor.extract(path, document.content_type),
+         _ <- Logger.info("Extracted text, length: #{String.length(text)}"),
          {:ok, chunks} <- chunk_text(text),
+         _ <- Logger.info("Chunked into #{length(chunks)} chunks, embedding now..."),
          {:ok, embeddings} <- Embeddings.embed_batch(chunks),
+         _ <- Logger.info("Received #{length(embeddings)} embeddings, storing..."),
          {:ok, count} <- store_chunks(document.id, chunks, embeddings) do
+      Logger.info("Stored #{count} chunks for document #{document.id}")
       {:ok, count}
     end
   end

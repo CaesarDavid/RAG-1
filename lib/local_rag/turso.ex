@@ -83,7 +83,7 @@ defmodule LocalRag.Turso do
     end
   end
 
-  defp timeout_for(stmts), do: max(30_000, length(stmts) * 1_000)
+  defp timeout_for(stmts), do: max(120_000, length(stmts) * 5_000)
 
   defp parse_results(results) do
     execute_results = Enum.reject(results, &(get_in(&1, ["response", "type"]) == "close"))
@@ -125,7 +125,7 @@ defmodule LocalRag.Turso do
   defp build_stmt(sql, args),
     do: %{"sql" => sql, "args" => Enum.map(args, &encode_value/1)}
 
-  defp encode_value(nil), do: %{"type" => "null", "value" => nil}
+  defp encode_value(nil), do: %{"type" => "null"}
   defp encode_value(v) when is_integer(v), do: %{"type" => "integer", "value" => to_string(v)}
   defp encode_value(v) when is_float(v), do: %{"type" => "float", "value" => v}
   defp encode_value(v) when is_binary(v), do: %{"type" => "text", "value" => v}

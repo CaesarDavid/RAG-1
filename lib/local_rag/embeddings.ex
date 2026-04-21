@@ -25,27 +25,47 @@ defmodule LocalRag.Embeddings do
   end
 
   @doc """
-  Embeds a list of texts in one request.
+  Embeds a list of texts in one request, chunking locally to prevent timeouts.
   Returns `{:ok, [[float]]}` or `{:error, reason}`.
   """
   def embed_batch(texts) when is_list(texts) do
     url = base() <> "/v1/embeddings"
     model = cfg(:embedding_model)
 
-    case Req.post(url, json: %{model: model, input: texts}, receive_timeout: 300_000) do
-      {:ok, %{status: 200, body: %{"data" => data}}} ->
-        embeddings =
-          data
-          |> Enum.sort_by(& &1["index"])
-          |> Enum.map(& &1["embedding"])
+    require Logger
 
-        {:ok, embeddings}
+    batches = Enum.chunk_every(texts, 50)
+    total_batches = length(batches)
 
-      {:ok, %{status: status, body: body}} ->
-        {:error, "LM Studio embed returned #{status}: #{inspect(body)}"}
+    # Process in chunks of 50 to avoid timing out LM Studio on huge documents
+    results =
+      batches
+      |> Enum.with_index(1)
+      |> Enum.map(fn {batch, idx} ->
+        Logger.info("Processing embedding batch #{idx}/#{total_batches}")
 
-      {:error, reason} ->
-        {:error, "HTTP error: #{inspect(reason)}"}
+        case Req.post(url, json: %{model: model, input: batch}, receive_timeout: 300_000) do
+          {:ok, %{status: 200, body: %{"data" => data}}} ->
+            embeddings =
+              data
+              |> Enum.sort_by(& &1["index"])
+              |> Enum.map(& &1["embedding"])
+
+            {:ok, embeddings}
+
+          {:ok, %{status: status, body: body}} ->
+            {:error, "LM Studio embed returned #{status}: #{inspect(body)}"}
+
+          {:error, reason} ->
+            {:error, "HTTP error: #{inspect(reason)}"}
+        end
+      end)
+
+    # If any chunk failed, return the first error. Else return flattened embeddings.
+    if failed = Enum.find(results, &match?({:error, _}, &1)) do
+      failed
+    else
+      {:ok, Enum.flat_map(results, fn {:ok, embeddings} -> embeddings end)}
     end
   end
 
