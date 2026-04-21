@@ -18,7 +18,7 @@ config :local_rag, :rag,
   embedding_model: "text-embedding-bge-m3",
   # "local-model" routes to whichever chat/LLM model is currently loaded in LM Studio.
   # Replace with the exact API Model Identifier shown in LM Studio if you want to pin a specific model.
-  generation_model: "local-model",
+  generation_model: "google/gemma-4-e4b",
   embedding_dimensions: 1024,
   chunk_size: 500,
   chunk_overlap: 50,
