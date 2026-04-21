@@ -1,4 +1,6 @@
 defmodule LocalRag.Chunks do
+  require Logger
+
   alias LocalRag.Turso
 
   @doc """
@@ -6,6 +8,8 @@ defmodule LocalRag.Chunks do
   Embeddings are passed as JSON arrays; Turso's `vector32()` function converts them.
   Returns `{:ok, count}` or `{:error, reason}`.
   """
+  @batch_size 50
+
   def insert_chunks(document_id, chunks_with_embeddings) do
     now = DateTime.utc_now() |> DateTime.to_iso8601()
 
@@ -21,10 +25,14 @@ defmodule LocalRag.Chunks do
          """, [document_id, content, idx, embedding_json, now, now]}
       end)
 
-    case Turso.pipeline(stmts) do
-      {:ok, results} -> {:ok, length(results)}
-      {:error, _} = err -> err
-    end
+    stmts
+    |> Enum.chunk_every(@batch_size)
+    |> Enum.reduce_while({:ok, 0}, fn batch, {:ok, count} ->
+      case Turso.pipeline(batch) do
+        {:ok, results} -> {:cont, {:ok, count + length(results)}}
+        {:error, _} = err -> {:halt, err}
+      end
+    end)
   end
 
   def delete_for_document(document_id) do
@@ -34,20 +42,25 @@ defmodule LocalRag.Chunks do
   @doc """
   Returns the top-k chunks most similar to `query_embedding` (cosine distance).
   Only considers chunks from documents with status 'ready'.
+  Uses Turso's vector_top_k() ANN function for index-backed search.
   """
   def similarity_search(query_embedding, top_k \\ 5) do
     embedding_json = Jason.encode!(query_embedding)
 
+    # Request extra candidates from the ANN index to allow for status filtering.
+    ann_k = top_k * 3
+
     sql = """
     SELECT c.content, d.name AS document_name, c.chunk_index
-    FROM chunks c
+    FROM vector_top_k('chunks_embedding_idx', vector32(?), #{ann_k}) v
+    JOIN chunks c ON c.rowid = v.id
     JOIN documents d ON d.id = c.document_id
     WHERE d.status = 'ready'
-    ORDER BY vector_distance_cos(c.embedding, vector32(?))
-    LIMIT ?
+    ORDER BY vector_distance_cos(c.embedding, vector32(?)) ASC
+    LIMIT #{top_k}
     """
 
-    case Turso.query(sql, [embedding_json, top_k]) do
+    case Turso.query(sql, [embedding_json, embedding_json]) do
       {:ok, rows} ->
         Enum.map(rows, fn row ->
           %{
@@ -57,7 +70,8 @@ defmodule LocalRag.Chunks do
           }
         end)
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.error("Similarity search failed: #{inspect(reason)}")
         []
     end
   end

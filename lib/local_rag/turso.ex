@@ -70,7 +70,7 @@ defmodule LocalRag.Turso do
     case Req.post(pipeline_url(),
            json: %{"requests" => requests},
            headers: [{"authorization", "Bearer #{token()}"}],
-           receive_timeout: 30_000
+           receive_timeout: timeout_for(sql_args_list)
          ) do
       {:ok, %{status: 200, body: %{"results" => results}}} ->
         parse_results(results)
@@ -82,6 +82,8 @@ defmodule LocalRag.Turso do
         {:error, "Turso connection error: #{inspect(reason)}"}
     end
   end
+
+  defp timeout_for(stmts), do: max(30_000, length(stmts) * 1_000)
 
   defp parse_results(results) do
     execute_results = Enum.reject(results, &(get_in(&1, ["response", "type"]) == "close"))

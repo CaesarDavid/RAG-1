@@ -108,25 +108,22 @@
           <%= for doc <- @documents do %>
             <% {label, badge_class} = status_badge(doc.status) %>
             <tr>
-              <td class="font-medium">{doc.name}</td>
-              <td class="text-base-content/60 text-sm">{doc.original_filename}</td>
+              <td class="font-medium max-w-[150px] truncate" title={doc.name}>{doc.name}</td>
+              <td class="text-base-content/60 text-sm max-w-[150px] truncate" title={doc.original_filename}>{doc.original_filename}</td>
               <td class="text-sm">{humanize_bytes(doc.file_size)}</td>
               <td class="text-sm">{doc.chunk_count}</td>
               <td>
                 <span class={"badge #{badge_class}"}>{label}</span>
                 <%= if doc.error_message do %>
-                  <p class="text-error text-xs mt-1">{doc.error_message}</p>
+                  <p class="text-error text-xs mt-1 break-words max-w-xs">{doc.error_message}</p>
                 <% end %>
               </td>
               <td>
                 <button
                   phx-click="delete"
                   phx-value-id={doc.id}
-                  data-confirm={
-                    # {doc.name}"? This cannot be undone."
-                    "Delete "
-                  }
-                  class="btn btn-xs btn-ghost text-error"
+                  data-confirm={"Delete \"#{doc.name}\"? This cannot be undone."}
+                  class="btn btn-xs btn-error btn-outline"
                 >
                   Delete
                 </button>

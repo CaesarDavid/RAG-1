@@ -56,4 +56,3 @@ defmodule LocalRag.Documents.Document do
     end
   end
 end
-
