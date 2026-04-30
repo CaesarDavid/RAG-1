@@ -12,6 +12,8 @@ defmodule LocalRag.Embeddings do
   defp cfg(key), do: Application.fetch_env!(:local_rag, :rag)[key]
   defp base, do: cfg(:lm_studio_url)
 
+  require Logger
+
   @doc """
   Embeds a single text string.
   Returns `{:ok, [float]}` or `{:error, reason}`.
@@ -31,8 +33,6 @@ defmodule LocalRag.Embeddings do
   def embed_batch(texts) when is_list(texts) do
     url = base() <> "/v1/embeddings"
     model = cfg(:embedding_model)
-
-    require Logger
 
     batches = Enum.chunk_every(texts, 50)
     total_batches = length(batches)
@@ -54,10 +54,12 @@ defmodule LocalRag.Embeddings do
             {:ok, embeddings}
 
           {:ok, %{status: status, body: body}} ->
-            {:error, "LM Studio embed returned #{status}: #{inspect(body)}"}
+            Logger.error("LM Studio embed returned #{status}: #{inspect(body)}")
+            {:error, "Embedding service returned an unexpected response."}
 
           {:error, reason} ->
-            {:error, "HTTP error: #{inspect(reason)}"}
+            Logger.error("HTTP error calling embedding service: #{inspect(reason)}")
+            {:error, "Could not reach the embedding service. Please check that LM Studio is running."}
         end
       end)
 
@@ -92,10 +94,12 @@ defmodule LocalRag.Embeddings do
         {:ok, String.trim(content)}
 
       {:ok, %{status: status, body: resp_body}} ->
-        {:error, "LM Studio generate returned #{status}: #{inspect(resp_body)}"}
+        Logger.error("LM Studio generate returned #{status}: #{inspect(resp_body)}")
+        {:error, "Generation service returned an unexpected response."}
 
       {:error, reason} ->
-        {:error, "HTTP error: #{inspect(reason)}"}
+        Logger.error("HTTP error calling generation service: #{inspect(reason)}")
+        {:error, "Could not reach the generation service. Please check that LM Studio is running."}
     end
   end
 

@@ -47,10 +47,10 @@ defmodule LocalRagWeb.ChatLive do
         {:ok, %{answer: answer, sources: sources}} ->
           %{role: :assistant, content: answer, sources: sources}
 
-        {:error, reason} ->
+        {:error, _reason} ->
           %{
             role: :assistant,
-            content: "Sorry, I encountered an error: #{reason}",
+            content: "Sorry, I encountered an error processing your question. Please try again.",
             sources: []
           }
       end

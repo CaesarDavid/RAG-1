@@ -82,16 +82,26 @@ defmodule LocalRag.Processor do
     path = tmp_path(document)
     Logger.info("Starting processing for document #{document.id} at path #{path}")
 
-    with {:ok, text} <- Extractor.extract(path, document.content_type),
-         _ <- Logger.info("Extracted text, length: #{String.length(text)}"),
-         {:ok, chunks} <- chunk_text(text),
-         _ <- Logger.info("Chunked into #{length(chunks)} chunks, embedding now..."),
-         {:ok, embeddings} <- Embeddings.embed_batch(chunks),
-         _ <- Logger.info("Received #{length(embeddings)} embeddings, storing..."),
-         {:ok, count} <- store_chunks(document.id, chunks, embeddings) do
-      Logger.info("Stored #{count} chunks for document #{document.id}")
-      {:ok, count}
+    result =
+      with {:ok, text} <- Extractor.extract(path, document.content_type),
+           _ <- Logger.info("Extracted text, length: #{String.length(text)}"),
+           {:ok, chunks} <- chunk_text(text),
+           _ <- Logger.info("Chunked into #{length(chunks)} chunks, embedding now..."),
+           {:ok, embeddings} <- Embeddings.embed_batch(chunks),
+           _ <- Logger.info("Received #{length(embeddings)} embeddings, storing..."),
+           {:ok, count} <- store_chunks(document.id, chunks, embeddings) do
+        Logger.info("Stored #{count} chunks for document #{document.id}")
+        {:ok, count}
+      end
+
+    # Remove the upload file once processing is complete (success or failure)
+    # to prevent priv/uploads/ from growing unbounded.
+    case File.rm(path) do
+      :ok -> :ok
+      {:error, reason} -> Logger.warning("Could not remove processed file #{path}: #{inspect(reason)}")
     end
+
+    result
   end
 
   defp chunk_text(text) do

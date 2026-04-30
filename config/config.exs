@@ -9,7 +9,7 @@ import Config
 
 # Turso database config (overridden at runtime via env vars in runtime.exs)
 config :local_rag, :turso,
-  url: System.get_env("DATBASE_URL") || "",
+  url: System.get_env("DATABASE_URL") || "",
   token: System.get_env("TURSO_TOKEN") || ""
 
 # RAG configuration – override in runtime.exs for production

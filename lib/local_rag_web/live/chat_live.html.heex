@@ -11,7 +11,7 @@
   </div>
 
   <%!-- Messages --%>
-  <div class="flex-1 overflow-y-auto space-y-4 mb-4 pr-1" id="messages" phx-hook="ScrollBottom">
+  <div class="flex-1 overflow-y-auto space-y-4 mb-4 pr-1" id="messages" phx-hook=".ScrollBottom">
     <%= if @messages == [] do %>
       <div class="text-center text-base-content/40 mt-20">
         <p class="text-lg">Ask anything about your uploaded documents.</p>
@@ -84,9 +84,8 @@
   </form>
 </div>
 
-<script>
-  // Auto-scroll to bottom when new messages arrive
-  window.ScrollBottom = {
+<script :type={Phoenix.LiveView.ColocatedHook} name=".ScrollBottom">
+  export default {
     mounted() { this.scrollToBottom() },
     updated() { this.scrollToBottom() },
     scrollToBottom() { this.el.scrollTop = this.el.scrollHeight }

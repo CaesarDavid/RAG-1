@@ -14,8 +14,7 @@ config :local_rag, LocalRagWeb.Endpoint,
 
 # Turso credentials – loaded for all environments from env vars.
 # In dev: source .env before starting (e.g. `source .env && mix phx.server`).
-# Note: env var is DATBASE_URL (matching the .env file spelling).
-turso_url = System.get_env("DATBASE_URL") || ""
+turso_url = System.get_env("DATABASE_URL") || ""
 turso_token = System.get_env("TURSO_TOKEN") || ""
 
 if turso_url != "" do

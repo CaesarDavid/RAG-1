@@ -53,6 +53,11 @@ defmodule LocalRag.Chunks do
     # The ANN index needs an array formatted explicitly as a string
     embedding_json = "[" <> Enum.join(query_embedding, ", ") <> "]"
 
+    # Validate top_k to prevent unsafe SQL interpolation
+    unless is_integer(top_k) and top_k > 0 and top_k <= 1000 do
+      raise ArgumentError, "top_k must be a positive integer not exceeding 1000, got: #{inspect(top_k)}"
+    end
+
     # Request extra candidates from the ANN index to allow for status filtering.
     ann_k = top_k * 3
 

@@ -1,6 +1,6 @@
 import Config
 
-# Auto-load .env file in development so TURSO_TOKEN and DATBASE_URL are available.
+# Auto-load .env file in development so TURSO_TOKEN and DATABASE_URL are available.
 # Alternatively, run: source .env && mix phx.server
 if File.exists?(".env") do
   ".env"

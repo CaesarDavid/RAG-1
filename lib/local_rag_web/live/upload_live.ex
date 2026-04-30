@@ -1,6 +1,8 @@
 defmodule LocalRagWeb.UploadLive do
   use LocalRagWeb, :live_view
 
+  require Logger
+
   alias LocalRag.{Documents, Processor}
 
   @accepted_types ~w(.pdf .txt .md .csv .json)
@@ -64,12 +66,22 @@ defmodule LocalRagWeb.UploadLive do
       end)
 
     docs_ok = Enum.filter(uploaded_docs, &match?({:ok, _}, &1))
+    docs_err = Enum.filter(uploaded_docs, &match?({:error, _}, &1))
+
+    flash_msg =
+      case {length(docs_ok), length(docs_err)} do
+        {0, n} -> "Failed to upload #{n} file(s)."
+        {ok, 0} -> "#{ok} file(s) queued for processing."
+        {ok, n} -> "#{ok} file(s) queued for processing. #{n} file(s) failed."
+      end
+
+    flash_type = if docs_err == [], do: :info, else: :error
 
     socket =
       socket
       |> assign(:uploading, false)
       |> assign(:documents, Documents.list_documents())
-      |> put_flash(:info, "#{length(docs_ok)} file(s) queued for processing.")
+      |> put_flash(flash_type, flash_msg)
 
     {:noreply, socket}
   end
@@ -82,7 +94,14 @@ defmodule LocalRagWeb.UploadLive do
     # Remove the stored file
     ext = Path.extname(doc.original_filename)
     path = Path.join(Processor.uploads_dir(), "#{doc.id}#{ext}")
-    File.rm(path)
+
+    case File.rm(path) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Could not remove upload file #{path}: #{inspect(reason)}")
+    end
 
     {:noreply,
      socket
