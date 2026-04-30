@@ -109,12 +109,7 @@
             <% {label, badge_class} = status_badge(doc.status) %>
             <tr>
               <td class="font-medium max-w-[150px] truncate" title={doc.name}>{doc.name}</td>
-              <td
-                class="text-base-content/60 text-sm max-w-[150px] truncate"
-                title={doc.original_filename}
-              >
-                {doc.original_filename}
-              </td>
+              <td class="text-base-content/60 text-sm max-w-[150px] truncate" title={doc.original_filename}>{doc.original_filename}</td>
               <td class="text-sm">{humanize_bytes(doc.file_size)}</td>
               <td class="text-sm">{doc.chunk_count}</td>
               <td>
